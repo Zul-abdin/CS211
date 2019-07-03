@@ -1,52 +1,87 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void printMatrix(float** matrix, int row, int col);
-void freeMatrix(float** matrix, int row);
-float** readMatrix(FILE* fp);
+void printMatrix(double** matrix, int row, int col);
+void freeMatrix(double** matrix, int row);
+void readMatrix(FILE* fp);
+double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2);
+double** matrixX;
+double** matrixY;
 
-int main(int argv, char** argc) {
+int rowX, colX, rowY, colY, attributes;
 
-    int row = 3;
-    int col = 5;
+int main(int argc, char** argv) {
 
-    float** matrix = (float**)malloc(sizeof(float*)*row);
-
-    for(int i = 0; i < row; i++) {
-        matrix[i] = (float *) malloc(sizeof(float) * col);
+    if(argc != 2){
+        printf("Error: No File Given.\n");
+        return 0;
     }
 
-    for(int i = 0; i < row; i++){
-        for(int j = 0; j < col; j++){
-            matrix[i][j] = 0;
-        }
-    }
+    FILE* fp = fopen(argv[1], "r");
 
-    printMatrix(matrix, row, col);
-    free(matrix);
+    readMatrix(fp);
 
-    FILE* fp = argc[1];
-    float** fileMatrix = readMatrix(fp);
+    printf("Matrix X:\n");
+    printMatrix(matrixX, rowX, colX);
+    printf("Matrix Y:\n");
+    printMatrix(matrixY, rowY, colY);
 
+
+    freeMatrix(matrixX, rowX);
+    freeMatrix(matrixY, rowY);
+
+    fclose(fp);
     return 0;
 }
 
-void printMatrix(float** matrix, int row, int col){
+void printMatrix(double** matrix, int row, int col){
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
-            printf("%f ", matrix[i][j]);
+            printf("%lf ", matrix[i][j]);
         }
         printf("\n");
     }
 }
 
-void freeMatric(float** matrix, int row){
+void freeMatrix(double** matrix, int row){
     for(int i = 0; i < row; i++){
         free(matrix[i]);
     }
     free(matrix);
 }
 
-float** readMatrix(FILE* fp){
+void readMatrix(FILE* fp){
+    fscanf(fp, "%d\n", &attributes);
+    fscanf(fp, "%d\n", &rowX);
+    colX = attributes + 1;
+    colY = 1;
+    rowY = rowX;
 
+    matrixX = (double**)malloc(sizeof(double*)*rowX);
+
+    for(int i = 0; i < rowX; i++) {
+        matrixX[i] = (double*)malloc(sizeof(double) * colX);
+    }
+
+    matrixY = (double**)malloc(sizeof(double*)*rowY);
+
+    for(int i = 0; i < rowY; i++) {
+        matrixY[i] = (double*)malloc(sizeof(double) * colY);
+    }
+
+    for(int i = 0; i < rowX; i++){
+        fscanf(fp, "%lf,", &matrixY[i][0]);
+        matrixX[i][0] = 1;
+        for(int j = 1; j < colX - 1; j++){
+            fscanf(fp, "%lf,", &matrixX[i][j]);
+        }
+        fscanf(fp, "%lf\n", &matrixX[i][colX - 1]);
+    }
+}
+
+double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2){
+
+
+    //Temporary return for error
+    return m1;
 }
