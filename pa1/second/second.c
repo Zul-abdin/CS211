@@ -50,20 +50,6 @@ int main(int argc, char** argv) {
        }
     }
 
-    //while(!feof(fp)){
-    //    fscanf(fp, "%c %d\n", &func, &key);
-    //    printf("%c %d\n", func, key);
-    //}
-
-    /*insertNode(10002);
-    insertNode(2);
-
-    printHeadLL(2);
-
-    searchHashMap(2);
-    searchHashMap(1002);
-     */
-
     fclose(fp);
 
 }
