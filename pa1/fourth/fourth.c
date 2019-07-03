@@ -4,6 +4,7 @@
 void printMatrix(double** matrix, int row, int col);
 void freeMatrix(double** matrix, int row);
 void readMatrix(FILE* fp);
+double** transposeMatrix(double** matrix, int row, int col);
 double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2);
 double** matrixX;
 double** matrixY;
@@ -21,14 +22,24 @@ int main(int argc, char** argv) {
 
     readMatrix(fp);
 
+    double** xT = transposeMatrix(matrixX, rowX, colX);
+    int colXT = rowX;
+    int rowXT = colX;
+
+    double** xSq = multiplyMatrix(xT, matrixY, rowXT, colXT, rowX, colX);
+
     printf("Matrix X:\n");
     printMatrix(matrixX, rowX, colX);
     printf("Matrix Y:\n");
     printMatrix(matrixY, rowY, colY);
-
+    printf("Matrix X^T:\n");
+    printMatrix(xT, rowXT, colXT);
+    printf("Matrix X^T * X:\n");
 
     freeMatrix(matrixX, rowX);
     freeMatrix(matrixY, rowY);
+    freeMatrix(xT, colX);
+    freeMatrix(xSq, colX);
 
     fclose(fp);
     return 0;
@@ -79,9 +90,41 @@ void readMatrix(FILE* fp){
     }
 }
 
+double** transposeMatrix(double** matrix, int row, int col){
+
+    double** result = (double**)malloc(sizeof(double*)*col);
+
+    for(int i = 0; i < col; i++) {
+        result[i] = (double*)malloc(sizeof(double) * row);
+    }
+
+    for(int i = 0; i < row; i++) {
+        for (int j = 0; j < col; j++) {
+            result[j][i] = matrix[i][j];
+        }
+    }
+    return result;
+}
+
 double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2){
 
+    if(col1 != row2){
+        printf("Error: Matrices cannot be multiplied.\n");
+        return m1;
+    }
 
-    //Temporary return for error
-    return m1;
+    double** result = (double**)malloc(sizeof(double*)*row1);
+
+    for(int i = 0; i < row1; i++) {
+        matrixX[i] = (double*)malloc(sizeof(double) * col2);
+    }
+
+    for(int i = 0; i < row1; i++){
+        for(int j = 0; j < col2; j++){
+            for(int k = 0; k < col1; k++){
+                result[i][j] = result[i][j] + m1[i][k] + m2[k][j];
+            }
+        }
+    }
+    return result;
 }
