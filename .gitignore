@@ -54,3 +54,11 @@ dkms.conf
 #idea Files
 *.idea
 cmake-build-debug*
+
+#Binary Files
+/Notes/MatrixOps/MatrixOps
+/pa1/first/first
+/pa1/fourth/fourth
+/pa1/second/second
+/pa1/third/third
+/Notes/sudoku/sudoku
