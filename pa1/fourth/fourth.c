@@ -116,14 +116,24 @@ double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, 
     double** result = (double**)malloc(sizeof(double*)*row1);
 
     for(int i = 0; i < row1; i++) {
-        matrixX[i] = (double*)malloc(sizeof(double) * col2);
+        matrixX[i] = (double*)malloc(sizeof(double)*col2);
     }
+
+    for(int i = 0; i < row1; i++) {
+        for (int j = 0; j < col2; j++) {
+            result[i][j] = 0;
+        }
+    }
+
+    double sum = 0;
 
     for(int i = 0; i < row1; i++){
         for(int j = 0; j < col2; j++){
             for(int k = 0; k < col1; k++){
-                result[i][j] = result[i][j] + m1[i][k] + m2[k][j];
+                sum = sum + m1[i][k] + m2[k][j];
             }
+            result[i][j] = sum;
+            sum = 0;
         }
     }
     return result;
