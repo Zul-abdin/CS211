@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 void insertNode(int key){
 
     if(searchHashMap(key, 0) == 1){
-        printf("%d is a duplicate\n", key);
+        printf("duplicate\n");
         return;
     }
 
@@ -75,7 +75,7 @@ void insertNode(int key){
         hashMap[index].tail = n; //equal to tail = tail -> next
     }
 
-    printf("%d has been inserted\n", key);
+    printf("inserted\n");
 
 }
 
@@ -95,14 +95,14 @@ int searchHashMap(int key, int toPrint){
     int index = hashF(key);
     if(hashMap[index].head == NULL){
         if(toPrint == 1) {
-            printf("%d is absent\n", key);
+            printf("absent\n");
         }
         return 0;
     } else {
         for(struct Node* temp = hashMap[index].head; temp != NULL; temp = temp -> next){
             if(temp->val == key){
                 if(toPrint == 1) {
-                    printf("%d is present\n", key);
+                    printf("present\n");
                 }
                 return 1;
             }

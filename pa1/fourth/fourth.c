@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     double** matrixResults = multiplyMatrix(matrixTest, matrixW, rowTest, colTest, rowW, colW);
     int rowResults = rowTest;
     int colResults = colW;
-
+/*
     printf("\nTraining Matrix:\n");
     printMatrix(trainMatrix, rowX, colX);
     printf("\nMatrix X:\n");
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     printMatrix(matrixW, rowW, colW);
     printf("\nMatrix Test:\n");
     printMatrix(matrixTest, rowTest, colTest);
-    printf("\nMatrix Results:\n");
+    printf("\nMatrix Results:\n");*/
     printMatrix(matrixResults, rowResults, colResults);
 
     freeMatrix(trainMatrix, rowX);

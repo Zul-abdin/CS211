@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 void printArray(int*, int);
+void printList(int*, int);
 int* sortArrDes(int*, int);
 int* sortArrAsc(int*, int);
 
@@ -63,7 +64,7 @@ int main(int argc, char** argv) {
     for(int i = 0; i < evenCount; i++){
         resultArr[oddCount + i] = evenArr[i];
     }
-
+/*
     printf("Original Array: ");
     printArray(arr, size);
     printf("Odd Array: ");
@@ -72,6 +73,8 @@ int main(int argc, char** argv) {
     printArray(evenArr, evenCount);
     printf("Returned Array: ");
     printArray(resultArr, size);
+*/
+    printList(resultArr, size);
 
     fclose(fp);
     return 0;
@@ -87,6 +90,14 @@ void printArray(int* arr, int size){
     }
 
     printf("%d]\n", arr[size - 1]);
+}
+
+void printList(int* arr, int size){
+
+    for(int i = 0; i < size; i++){
+        printf("%d\t", arr[i]);
+    }
+    printf("\n");
 }
 
 int* sortArrDes(int* arr, int size){
