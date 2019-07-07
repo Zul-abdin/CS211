@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 void printMatrix(double** matrix, int row, int col);
+void printResult(double** matrix, int row, int col);
 void freeMatrix(double** matrix, int row);
 double** readMatrix(FILE* fp, int row, int col);
 double** readMatrixTest(FILE* fp, int row, int col);
@@ -10,6 +11,7 @@ double** createMatrixY(double** matrix, int row);
 double** transposeMatrix(double** matrix, int row, int col);
 double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2);
 double** invertMatrix(double** matrix, int row);
+int roundDub(double num);
 
 int main(int argc, char** argv) {
 
@@ -86,8 +88,11 @@ int main(int argc, char** argv) {
     printMatrix(matrixW, rowW, colW);
     printf("\nMatrix Test:\n");
     printMatrix(matrixTest, rowTest, colTest);
-    printf("\nMatrix Results:\n");*/
+    printf("\nMatrix Results:\n");
     printMatrix(matrixResults, rowResults, colResults);
+*/
+
+    printResult(matrixResults, rowResults, colResults);
 
     freeMatrix(trainMatrix, rowX);
     freeMatrix(matrixX, rowX);
@@ -107,6 +112,15 @@ void printMatrix(double** matrix, int row, int col){
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
             printf("%lf ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+void printResult(double** matrix, int row, int col){
+    for(int i = 0; i < row; i++){
+        for(int j = 0; j < col; j++){
+            printf("%d ", roundDub(matrix[i][j]));
         }
         printf("\n");
     }
@@ -311,4 +325,13 @@ double** invertMatrix(double** matrix, int row){
 
     freeMatrix(copy, row);
     return result;
+}
+
+int roundDub(double num){
+
+    if(num - (int)num < 0.5){
+        return (int)num;
+    } else {
+        return (int)num + 1;
+    }
 }
