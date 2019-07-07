@@ -4,17 +4,18 @@
 void printMatrix(double** matrix, int row, int col);
 void freeMatrix(double** matrix, int row);
 double** readMatrix(FILE* fp, int row, int col);
+double** readMatrixTest(FILE* fp, int row, int col);
 double** createMatrixX(double** matrix, int row, int col);
 double** createMatrixY(double** matrix, int row);
 double** transposeMatrix(double** matrix, int row, int col);
 double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, int col2);
-double** inverseMatrix(double** matrix, int row);
+double** invertMatrix(double** matrix, int row);
 
 int main(int argc, char** argv) {
 
     int rowX, colX, rowY, colY, attributes;
 
-    if(argc != 2){
+    if(argc != 3){
         printf("Error: No File Given.\n");
         return 0;
     }
@@ -37,30 +38,66 @@ int main(int argc, char** argv) {
     int colXT = rowX;
     int rowXT = colX;
 
-    double** xTy = multiplyMatrix(xTranspose, matrixX, rowXT, colXT, rowX, colX);
-    int rowxTy = rowXT;
-    int colxTy = colX;
+    double** xTx = multiplyMatrix(xTranspose, matrixX, rowXT, colXT, rowX, colX);
+    int rowxTx = rowXT;
+    int colxTx = colX;
 
-    double** xInv = inverseMatrix(xTy, rowxTy);
+    double** xTxInv = invertMatrix(xTx, rowxTx);
+    int rowxTxInv = rowxTx;
+    int colxTxInv = colxTx;
 
-    printf("Training Matrix:\n");
+    double** xTxInvMx = multiplyMatrix(xTxInv, xTranspose, rowxTxInv, colxTxInv, rowXT, colXT);
+    int rowxTxInvMx = rowxTxInv;
+    int colxTxInvMx = colXT;
+
+    double** matrixW = multiplyMatrix(xTxInvMx, matrixY, rowxTxInvMx, colxTxInvMx, rowY, colY);
+    int rowW = rowxTxInvMx;
+    int colW = colY;
+
+    int predictions;
+
+    FILE* fp2 = fopen(argv[2], "r");
+
+    fscanf(fp2, "%d\n", &predictions);
+
+    double** matrixTest = readMatrixTest(fp2, predictions, attributes + 1);
+    int rowTest = predictions;
+    int colTest = attributes + 1;
+
+    double** matrixResults = multiplyMatrix(matrixTest, matrixW, rowTest, colTest, rowW, colW);
+    int rowResults = rowTest;
+    int colResults = colW;
+
+    printf("\nTraining Matrix:\n");
     printMatrix(trainMatrix, rowX, colX);
-    printf("Matrix X:\n");
+    printf("\nMatrix X:\n");
     printMatrix(matrixX, rowX, colX);
-    printf("Matrix Y:\n");
+    printf("\nMatrix Y:\n");
     printMatrix(matrixY, rowY, colY);
-    printf("Matrix X^T:\n");
+    printf("\nMatrix X^T:\n");
     printMatrix(xTranspose, rowXT, colXT);
-    printf("Matrix X^T * X:\n");
-    printMatrix(xTy, rowxTy, colxTy);
-    printf("Matrix (X^T * X)^-1:\n");
-    printMatrix(xInv, rowxTy, colxTy);
+    printf("\nMatrix X^T * X:\n");
+    printMatrix(xTx, rowxTx, colxTx);
+    printf("\nMatrix (X^T * X)^-1:\n");
+    printMatrix(xTxInv, rowxTxInv, colxTxInv);
+    printf("\nMatrix ((X^T * X)^-1)X^T:\n");
+    printMatrix(xTxInvMx, rowxTxInvMx, colxTxInvMx);
+    printf("\nMatrix W:\n");
+    printMatrix(matrixW, rowW, colW);
+    printf("\nMatrix Test:\n");
+    printMatrix(matrixTest, rowTest, colTest);
+    printf("\nMatrix Results:\n");
+    printMatrix(matrixResults, rowResults, colResults);
 
     freeMatrix(trainMatrix, rowX);
     freeMatrix(matrixX, rowX);
     freeMatrix(matrixY, rowY);
     freeMatrix(xTranspose, colX);
-    freeMatrix(xTy, colX);
+    freeMatrix(xTx, colX);
+    freeMatrix(xTxInv, rowxTxInv);
+    freeMatrix(xTxInvMx, rowxTxInvMx);
+    freeMatrix(matrixW, rowW);
+    freeMatrix(matrixTest, rowTest);
 
     fclose(fp);
     return 0;
@@ -97,6 +134,23 @@ double** readMatrix(FILE* fp, int row, int col){
         }
         fscanf(fp, "%lf\n", &matrix[i][col - 1]);
     }
+    return matrix;
+}
+
+double** readMatrixTest(FILE* fp, int row, int col){
+    double** matrix = (double**)malloc(sizeof(double*)*row);
+
+    for(int i = 0; i < row; i++) {
+        matrix[i] = (double*)malloc(sizeof(double) * col);
+    }
+
+    for(int i = 0; i < row; i++){
+        for(int j = 1; j < col; j++){
+            fscanf(fp, "%lf,", &matrix[i][j]);
+        }
+        matrix[i][0] = 1;
+    }
+
     return matrix;
 }
 
@@ -180,7 +234,19 @@ double** multiplyMatrix(double** m1, double** m2, int row1, int col1, int row2, 
     return result;
 }
 
-double** inverseMatrix(double** matrix, int row){
+double** invertMatrix(double** matrix, int row){
+
+    double** copy = (double**)malloc(sizeof(double*)*row);
+
+    for(int i = 0; i < row; i++) {
+        copy[i] = (double*)malloc(sizeof(double)*row);
+    }
+
+    for(int i = 0; i < row; i++){
+        for(int j = 0; j < row; j++){
+            copy[i][j] = matrix[i][j];
+        }
+    }
 
     double** result = (double**)malloc(sizeof(double*)*row);
 
@@ -188,8 +254,8 @@ double** inverseMatrix(double** matrix, int row){
         result[i] = (double*)malloc(sizeof(double)*row);
     }
 
-    for(int i = 0; i < row; i++) {
-        for (int j = 0; j < row; j++) {
+    for(int i = 0; i < row; i++){
+        for(int j = 0; j < row; j++){
             if(i == j){
                 result[i][j] = 1;
             } else {
@@ -197,5 +263,52 @@ double** inverseMatrix(double** matrix, int row){
             }
         }
     }
+
+    for(int i = 0; i < row; i++){
+        if(copy[i][i] != 1){
+            if(copy[i][i] != 0){
+                double divisor = copy[i][i];
+                for(int j = 0; j < row; j++){
+                    copy[i][j] = copy[i][j] / divisor;
+                    result[i][j] = result[i][j] / divisor;
+                }
+            } else {
+                double coef = 0;
+                int nonZRow = 0;
+                for(int j = 0; j < row; j++){
+                    if(copy[j][i] != 0){
+                        nonZRow = j;
+                        coef = 1 / copy[j][i];
+                        break;
+                    }
+                }
+                for(int j = 0; j < row; j++){
+                    copy[i][j] = copy[i][j] + copy[nonZRow][j] * coef;
+                    result[i][j] = result[i][j] + result[nonZRow][j] * coef;
+                }
+            }
+        }
+        for(int j = i + 1; j < row; j++){
+            if(i != j) {
+                double coef = -1 * copy[j][i];
+                for(int k = 0; k < row; k++) {
+                    copy[j][k] = copy[j][k] + coef * copy[i][k];
+                    result[j][k] = result[j][k] + coef * result[i][k];
+                }
+            }
+        }
+    }
+
+    for(int i = 0; i < row; i++){
+        for(int j = 0; j < i; j++){
+            double coef = -1 * copy[j][i];
+            for(int k = 0; k < row; k++){
+                copy[j][k] = copy[j][k] + coef * copy[i][k];
+                result[j][k] = result[j][k] + coef * result[i][k];
+            }
+        }
+    }
+
+    freeMatrix(copy, row);
     return result;
 }
