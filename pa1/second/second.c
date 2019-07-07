@@ -109,7 +109,7 @@ int searchHashMap(int key, int toPrint){
         }
     }
     if(toPrint == 1) {
-        printf("%d is absent\n", key);
+        printf("absent\n");
     }
     return 0;
 }
