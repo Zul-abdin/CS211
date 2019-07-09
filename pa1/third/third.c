@@ -27,6 +27,7 @@ int main(int argc, char** argv) {
             fscanf(fp, "%c", &c);
             fscanf(fp, "%c", &c);
             fscanf(fp, " %d ", &n);
+            fscanf(fp, " %d ", &v);
             printf("%d\n", get(x, n));
         } else if(c == 'c'){
             fscanf(fp, "%c", &c);
@@ -40,6 +41,7 @@ int main(int argc, char** argv) {
             fscanf(fp, "%c", &c);
             fscanf(fp, "%c", &c);
             fscanf(fp, " %d ", &n);
+            fscanf(fp, " %d ", &v);
             x = set(x, n, v);
             printf("%hu\n", x);
         }
@@ -54,11 +56,10 @@ unsigned short comp(unsigned short x, int n){
     return (1 << n) ^ x;
 }
 
-unsigned short set(unsigned short x, int n, int v){
-    if(v == 0){
-        printf("%d\n", n);
-        return (1 << n) | x;
-    } else {
+unsigned short set(unsigned short x, int n, int v) {
+    if (v == 0) {
         return ~(1 << n) & x;
+    } else {
+        return (1 << n) | x;
     }
 }
