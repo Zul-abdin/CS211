@@ -14,7 +14,7 @@ void printHeadLL(int key);
 int searchHashMap(int key, int toPrint); //toPrint: give 1 to print, anything else will only return.
 
 
-struct Node hashMap[9999];
+struct Node hashMap[10000];
 
 int main(int argc, char** argv) {
 
@@ -115,5 +115,5 @@ int searchHashMap(int key, int toPrint){
 }
 
 int hashF(int key){
-    return key % 10000;
+    return abs(key % 10000);
 }

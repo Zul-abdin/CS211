@@ -35,13 +35,13 @@ int main(int argc, char** argv) {
             fscanf(fp, " %d ", &n);
             fscanf(fp, " %d ", &v);
             x = comp(x, n);
-            printf("%d\n", x);
+            printf("%hu\n", x);
         } else if(c == 's') {
             fscanf(fp, "%c", &c);
             fscanf(fp, "%c", &c);
             fscanf(fp, " %d ", &n);
             x = set(x, n, v);
-            printf("%d\n", x);
+            printf("%hu\n", x);
         }
     }
 }
@@ -56,8 +56,9 @@ unsigned short comp(unsigned short x, int n){
 
 unsigned short set(unsigned short x, int n, int v){
     if(v == 0){
+        printf("%d\n", n);
         return (1 << n) | x;
     } else {
-        return (254 << n) & x;
+        return ~(1 << n) & x;
     }
 }
