@@ -120,7 +120,7 @@ void printMatrix(double** matrix, int row, int col){
 void printResult(double** matrix, int row, int col){
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
-            printf("%d ", roundDub(matrix[i][j]));
+            printf("%0.0lf ",matrix[i][j]);
         }
         printf("\n");
     }
