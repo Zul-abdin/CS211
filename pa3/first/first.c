@@ -11,7 +11,6 @@ struct Line {
 int checkInputValidity(int argc, char** argv);
 //int isPowerOfTwo(int n);
 int logBaseTwo(unsigned int n);
-void append(char* s, char c);
 
 int main(int argc, char** argv) {
 
@@ -46,13 +45,9 @@ int main(int argc, char** argv) {
         totalSets = totalLines / linesPerSet;
     }
 
-    printf("%d", cacheSize);
-
-    return 1;
-
 //--------------------Initialize Addressing----------------------------//
     int blockOffsetSize = logBaseTwo(blockSize);
-    int setIndexSize = logBaseTwo(cacheSize / addressSize);
+    int setIndexSize = logBaseTwo(cacheSize * 8 / addressSize);
     int tagSize = addressSize - setIndexSize - blockOffsetSize;
 
 //    char tag[tagSize];
@@ -64,7 +59,7 @@ int main(int argc, char** argv) {
 
 //----------------------Start Caching---------------------------------//
 
-    char* address = (char*)malloc(sizeof(char) * addressSize + 1);
+    char* hexAddress = (char*)malloc(sizeof(char) * addressSize + 1);
     char operation;
 
     printf("blockSize: %d\n", blockSize);
@@ -72,11 +67,143 @@ int main(int argc, char** argv) {
     printf("setIndexSize: %d\n", setIndexSize);
     printf("blockOffsetSize: %d\n", blockOffsetSize);
 
-    while(fscanf(fp, "%c 0x%s\n", &operation, address) != EOF && operation != '#'){
-        while(strlen(address) < 48){
-            append(address, '0');
+    while(fscanf(fp, "%c 0x%s\n", &operation, hexAddress) != EOF && operation != '#'){
+
+//----------------------Convert Hex -> Bin---------------------------------//
+        char binAddress[48];
+        int i = 0;
+        int j = 0;
+        while(hexAddress[i]) {
+            switch (hexAddress[i]) {
+                case '0':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '0';
+                    break;
+                case '1':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '1';
+                    break;
+                case '2':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '0';
+                    break;
+                case '3':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '1';
+                    break;
+                case '4':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '0';
+                    break;
+                case '5':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '1';
+                    break;
+                case '6':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '0';
+                    break;
+                case '7':
+                    binAddress[j] = '0';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '1';
+                    break;
+                case '8':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '0';
+                    break;
+                case '9':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '1';
+                    break;
+                case 'A':
+                case 'a':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '0';
+                    break;
+                case 'B':
+                case 'b':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '0';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '1';
+                    break;
+                case 'C':
+                case 'c':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '0';
+                    break;
+                case 'D':
+                case 'd':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '0';
+                    binAddress[j + 3] = '1';
+                    break;
+                case 'E':
+                case 'e':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '0';
+                    break;
+                case 'F':
+                case 'f':
+                    binAddress[j] = '1';
+                    binAddress[j + 1] = '1';
+                    binAddress[j + 2] = '1';
+                    binAddress[j + 3] = '1';
+                    break;
+                default:
+                    break;
+            }
+            i++;
+            j += 4;
         }
-        printf("Operation: %c    Address: %s\n", operation, address);
+        int difference = addressSize - strlen(binAddress);
+        char fullBinAddress[49];
+        for(int k = 0; k < difference; k++){
+            fullBinAddress[k] = '0';
+        }
+        fullBinAddress[difference] = '\0';
+        strcat(fullBinAddress, binAddress);
+
+        printf("%c\n", operation);
+
+        printf("%s --> %s\n",hexAddress, fullBinAddress);
+
+//----------------------******************************************----------------------------//
+//----------------------fullBinAddress contains the 48-bit Address----------------------------//
+//----------------------******************************************----------------------------//
+
+//------------------------Begin Reading and Writing from Cache------------------------------//
+
+
+
+//        printf("Operation: %c    Hex Address: %s    Bin Address: %s \n", operation, hexAddress, binAddress);
 
 //        for(int i = 0; i < tagSize; i++) {
 //            printf("this char");
@@ -90,6 +217,8 @@ int main(int argc, char** argv) {
 
 //        printf("Tag: %s    Set Index: %s    Block Offset: %s\n", tag, setIndex, blockOffset);
     }
+    free(hexAddress);
+//    free(binAddress);
 }
 
 //----------------------Helper Methods--------------------------------//
@@ -107,10 +236,4 @@ int logBaseTwo(unsigned int n){
         count++;
     }
     return count;
-}
-
-void append(char* s, char c){
-    int len = strlen(s);
-    s[len] = c;
-    s[len+1] = '\0';
 }
