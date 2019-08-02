@@ -1,0 +1,5 @@
+Answers for: ./first 512 16 fifo assoc:4 trace1.txt
+Memory reads: 173
+Memory writes: 334
+Cache hits: 827
+Cache misses: 173
