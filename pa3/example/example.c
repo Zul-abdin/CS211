@@ -24,6 +24,7 @@ line** createcache(int setnum,int assoc);
 void writesim(unsigned long int tagindex,unsigned long int setindex,int assoc);
 void readsiml(unsigned long int tagindex,unsigned long int setindex,int assoc);
 void writesiml(unsigned long int tagindex,unsigned long int setindex,int assoc);
+void printBits(size_t const size, void const * const ptr);
 /**************************Main funtion**********************/
 int main(int argc, char** argv){
 /*argv[1] is cachesize
@@ -49,177 +50,81 @@ int main(int argc, char** argv){
     unsigned long int tagindex;
     unsigned long int setindex;
 
-    if(argv[3][0]=='f'){
-        FILE* fl;
-        fl=fopen(argv[5],"r");
+    /**************************calculate assoc and setnum in different map form(dir,full,set asso)**********************/
+    if(argv[4][0]=='d'){//direct map
+        assoc=1;
+        setnum=cachesize/blocksize;
 
-        if(fl==NULL){
-            printf("cannot find tracefile with that name\n");
-            return 0;
-        }
-//printf("70: here\n");
+    }else if(argv[4][5]!=':'){//fullassoc
+        setnum=1;
+        assoc=cachesize/blocksize;
+    }else{//n way associat chache
+        sscanf(argv[4],"assoc:%d",&n);
+        assoc=n;
+        setnum=cachesize/blocksize/n;
+    }
 
-/**************************calculate assoc and setnum in different map form(dir,full,set asso)**********************/
-        if(argv[4][0]=='d'){//direct map
-            assoc=1;
-            setnum=cachesize/blocksize;
+    /**************************calculate how many bit in each index and mask**********************/
+    b=log(blocksize)/log(2);
+    s=log(setnum)/log(2);
 
-        }else if(argv[4][5]!=':'){//fullassoc
-            setnum=1;
-            assoc=cachesize/blocksize;
-        }else{//n way associat chache
-            sscanf(argv[4],"assoc:%d",&n);
-            assoc=n;
-            setnum=cachesize/blocksize/n;
-        }
+    //blockmask=blocksize-1;
+    setmask=((1<<s)-1);
 
-/**************************calculate how many bit in each index and mask**********************/
-        b=log(blocksize)/log(2);
-        s=log(setnum)/log(2);
+    printf("%lu\n", setmask);
+    printBits(sizeof(setmask), &setmask);
 
-//blockmask=blocksize-1;
-        setmask=((1<<s)-1);
+    /**************************update cache based on num**********************/
+    cache=createcache(setnum,assoc);
 
-//t=48 - (b + s);
+    int cout = 0;
 
-/**************************update cache based on num**********************/
-        cache=createcache(setnum,assoc);
+    FILE* fl;
+    fl=fopen(argv[5],"r");
 
-//printf("110: here\n");
+    while(fscanf(fl, "%c %lx\n", &work, &address)==2) {
 
-/**************************loop begin(read file)without pre**********************/
-        while(fscanf(fl, "%c %lx\n", &work, &address)==2){
+        setindex = (address >> b) & setmask;
+        tagindex = address >> (b + s);
 
+/**************************fifo begin**********************/
+        if (argv[3][0] == 'f') {
 
 /**************************calculate the index**********************/
-/*setmask=((1<<s)-1)&(address>>b);
-tagmask=address>>(s+b);
-setindex=(address&setmask)>>b;
-tagindex=((address&tagmask)>>b)>>s;
-*/
 
-
-            setindex=(address>>b)&setmask;
-            tagindex=address>>(b+s);
-//printf("set: %lx   tag:%lx\n",setindex,tagindex);
-
-/**************************different work-mode**********************/
-
-            if(work=='R'){
-                readsim(tagindex,setindex,assoc);
-
-            }else if(work=='W'){
-                writesim(tagindex,setindex,assoc);
+            if (cout == 0) {
+                printf("Address: %lu\n", address);
+                printBits(sizeof(address), &address);
+                printf("Set Index: %lu\n", setindex);
+                printBits(sizeof(setindex), &setindex);
+                printf("Tag Index: %lu\n", tagindex);
+                printBits(sizeof(tagindex), &tagindex);
+                cout++;
             }
-        }
-        fclose(fl);
 
-        fl=fopen(argv[5],"r");
+            if (work == 'R') {
+                readsim(tagindex, setindex, assoc);
 
-        if(fl==NULL){
-            printf("cannot find tracefile with that name\n");
-            return 0;
-        }
-/**************************print the cache**********************/
-/*int i,j;
-for(i=0;i<setnum;i++){
-  for(j=0;j<assoc;j++){
-  printf("Valid:%d\t tag: %lx\n",cache[i][j].valid,cache[i][j].tag);
-}
-printf("--------------------------------\n\n");
-}*/
-        printf("Memory reads: %d\nMemory writes: %d\nCache hits: %d\nCache misses: %d\n",mr,mw,hit,miss);
+            } else if (work == 'W') {
+                writesim(tagindex, setindex, assoc);
+            }
 
 /**************************lru begin**********************/
-    }else if(argv[3][0]=='l'){
+        } else if (argv[3][0] == 'l') {
 
-        FILE* fl;
-        fl=fopen(argv[5],"r");
+            if (work == 'R') {
+                readsiml(tagindex, setindex, assoc);
 
-        if(fl==NULL){
-            printf("cannot find tracefile with that name\n");
-            return 0;
-        }
-//printf("70: here\n");
-
-/**************************calculate assoc and setnum in different map form(dir,full,set asso)**********************/
-        if(argv[4][0]=='d'){//direct map
-            assoc=1;
-            setnum=cachesize/blocksize;
-
-        }else if(argv[4][5]!=':'){//fullassoc
-            setnum=1;
-            assoc=cachesize/blocksize;
-        }else{//n way associat chache
-
-            sscanf(argv[4],"assoc:%d",&n);
-            assoc=n;
-            setnum=cachesize/blocksize/n;
-        }
-
-/**************************calculate how many bit in each index and mask**********************/
-        b=log(blocksize)/log(2);
-        s=log(setnum)/log(2);
-
-//blockmask=blocksize-1;
-        setmask=((1<<s)-1);
-
-//t=48 - (b + s);
-
-/**************************update cache based on num**********************/
-        cache=createcache(setnum,assoc);
-
-//printf("110: here\n");
-
-
-/**************************loop begin(read file)without pre**********************/
-        while(fscanf(fl, "%c %lx\n", &work, &address)==2){
-
-/**************************calculate the index**********************/
-/*setmask=((1<<s)-1)&(address>>b);
-tagmask=address>>(s+b);
-setindex=(address&setmask)>>b;
-tagindex=((address&tagmask)>>b)>>s;
-*/
-
-            setindex=(address>>b)&setmask;
-            tagindex=address>>(b+s);
-
-//printf("set: %lx   tag:%lx\n",setindex,tagindex);
-
-/**************************different work-mode**********************/
-
-            if(work=='R'){
-                readsiml(tagindex,setindex,assoc);
-
-            }else if(work=='W'){
-                writesiml(tagindex,setindex,assoc);
+            } else if (work == 'W') {
+                writesiml(tagindex, setindex, assoc);
             }
+
+        } else {
+            printf("policy not correct");
         }
-        fclose(fl);
-
-        fl=fopen(argv[5],"r");
-
-        if(fl==NULL){
-
-            printf("cannot find tracefile with that name\n");
-            return 0;
-
-        }
-/**************************print the cache**********************/
-/*int i,j;
-for(i=0;i<setnum;i++){
-  for(j=0;j<assoc;j++){
-  printf("Valid:%d\t tag: %lx\n",cache[i][j].valid,cache[i][j].tag);
-}
-printf("--------------------------------\n\n");
-}*/
-        printf("no-prefetch\n");
-        printf("Memory reads: %d\nMemory writes: %d\nCache hits: %d\nCache misses: %d\n",mr,mw,hit,miss);
-
-    }else{
-        printf("policy not correct");
     }
+    printf("Memory reads: %d\nMemory writes: %d\nCache hits: %d\nCache misses: %d\n", mr, mw, hit, miss);
+
     return 0;
 }
 /**************************malloc cache funtion**********************/
@@ -278,7 +183,7 @@ void readsim(unsigned long int tagindex,unsigned long int setindex,int assoc){
     }
     printf("210 problem");
 }
-///**************************write mode funtion**********************/
+///**************************write mode funtion**********************///
 void writesim(unsigned long int tagindex,unsigned long int setindex,int assoc){
 
     int i,j,min;
@@ -324,188 +229,6 @@ void writesim(unsigned long int tagindex,unsigned long int setindex,int assoc){
     printf("360 problem");
 }
 
-void empty(int setnum, int assoc){
-    int i,j;
-    for(i=0;i<setnum;i++){
-        for(j=0;j<assoc;j++){
-            cache[i][j].tag=0;
-            cache[i][j].valid=0;
-            cache[i][j].time=0;
-        }
-    }
-    miss=0;
-    hit=0;
-    mr=0;
-    mw=0;
-    count=0;
-}
-
-void prefetchww(unsigned long int tagindex,unsigned long int setindex,int assoc){
-
-    int i,j,min;
-
-    for(i=0;i<assoc;i++){
-        if(cache[setindex][i].valid==0){
-
-            mr++;
-            count++;
-            cache[setindex][i].valid=1;
-            cache[setindex][i].tag=tagindex;
-            cache[setindex][i].time=count;
-            return;
-        }else{
-
-            if(cache[setindex][i].tag==tagindex){
-                return;
-            }
-            if(i==(assoc-1)){
-
-                mr++;
-                min=0;
-                for(j=0;j<assoc;j++){
-
-                    if(cache[setindex][j].time<=cache[setindex][min].time){
-                        min=j;
-                    }
-                }
-                cache[setindex][min].valid=1;
-                cache[setindex][min].tag=tagindex;
-                count++;
-                cache[setindex][min].time=count;
-                return;
-            }
-        }
-    }
-    printf("439 problem");
-}
-void prefetchrr(unsigned long int tagindex,unsigned long int setindex,int assoc){
-
-    int i,j,min;
-
-    for(i=0;i<assoc;i++){
-        if(cache[setindex][i].valid==0){
-
-            mr++;
-            count++;
-            cache[setindex][i].valid=1;
-            cache[setindex][i].tag=tagindex;
-            cache[setindex][i].time=count;
-
-            return;
-        }else{
-
-            if(cache[setindex][i].tag==tagindex){
-
-                return;
-            }
-
-            if(i==(assoc-1)){
-                mr++;
-                min=0;
-                for(j=0;j<assoc;j++){
-
-                    if(cache[setindex][j].time<=cache[setindex][min].time){
-                        min=j;
-                    }
-                }
-                cache[setindex][min].valid=1;
-                cache[setindex][min].tag=tagindex;
-                count++;
-                cache[setindex][min].time=count;
-                return;
-            }
-        }
-    }
-    printf("499 problem");
-}
-
-void prefetchw(unsigned long int tagindex,unsigned long int setindex,int assoc,unsigned long int tagindexn,unsigned long int setindexn){
-
-    int i,j,min;
-
-    for(i=0;i<assoc;i++){
-        if(cache[setindex][i].valid==0){
-            miss++;
-            mr++;
-            mw++;
-            count++;
-            cache[setindex][i].valid=1;
-            cache[setindex][i].tag=tagindex;
-            cache[setindex][i].time=count;
-            prefetchww(tagindexn,setindexn,assoc);
-            return;
-        }else{
-            if(cache[setindex][i].tag==tagindex){
-                hit++;
-                mw++;
-                return;
-            }
-            if(i==(assoc-1)){
-                miss++;
-                mr++;
-                mw++;
-                min=0;
-                for(j=0;j<assoc;j++){
-
-                    if(cache[setindex][j].time<=cache[setindex][min].time){
-                        min=j;
-                    }
-                }
-                cache[setindex][min].valid=1;
-                cache[setindex][min].tag=tagindex;
-                count++;
-                cache[setindex][min].time=count;
-                prefetchww(tagindexn, setindexn,assoc);
-                return;
-            }
-        }
-    }
-    printf("360 problem");
-}
-void prefetchr(unsigned long int tagindex,unsigned long int setindex,int assoc,unsigned long int tagindexn,unsigned long int setindexn){
-
-    int i,j,min;
-
-    for(i=0;i<assoc;i++){
-        if(cache[setindex][i].valid==0){
-            miss++;
-            mr++;
-            count++;
-            cache[setindex][i].valid=1;
-            cache[setindex][i].tag=tagindex;
-            cache[setindex][i].time=count;
-
-            prefetchrr(tagindexn,setindexn,assoc);
-            return;
-        }else{
-            if(cache[setindex][i].tag==tagindex){
-                hit++;
-                return;
-            }
-
-            if(i==(assoc-1)){
-                miss++;
-                mr++;
-
-                min=0;
-                for(j=0;j<assoc;j++){
-
-                    if(cache[setindex][j].time<=cache[setindex][min].time){
-                        min=j;
-                    }
-                }
-                cache[setindex][min].valid=1;
-                cache[setindex][min].tag=tagindex;
-                count++;
-                cache[setindex][min].time=count;
-                prefetchrr(tagindexn,setindexn,assoc);
-                return;
-            }
-        }
-    }
-    printf("210 problem");
-}
-
 void readsiml(unsigned long int tagindex,unsigned long int setindex,int assoc){
 
     int i,j,min;
@@ -518,7 +241,6 @@ void readsiml(unsigned long int tagindex,unsigned long int setindex,int assoc){
             cache[setindex][i].valid=1;
             cache[setindex][i].tag=tagindex;
             cache[setindex][i].time=count;
-
             return;
         }else{
             if(cache[setindex][i].tag==tagindex){
@@ -594,4 +316,21 @@ void writesiml(unsigned long int tagindex,unsigned long int setindex,int assoc){
         }
     }
     printf("360 problem");
+}
+
+void printBits(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+
+    for (i=size-1;i>=0;i--)
+    {
+        for (j=7;j>=0;j--)
+        {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
 }

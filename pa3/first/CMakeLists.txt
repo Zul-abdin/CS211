@@ -3,4 +3,4 @@ project(first C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(first first.c)
+add_executable(first.c first)

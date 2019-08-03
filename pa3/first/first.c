@@ -5,23 +5,34 @@
 
 typedef struct Line {
     int valid;
-    char* tag;
-//    char* block;
+    unsigned long tag;
+    int repIndex; //FIFO: Lower = Older
 } Line;
 
 int checkInputValidity(int argc, char** argv);
-int binToInt(char* s);
 Line** initializeCache(int numSet, int assoc);
+void freeCache(Line** cache, int numSet);
+void printBits(size_t const size, void const * const ptr);
+unsigned long getNthToKthBits(unsigned long x, int n, int k);
+void FIFO(char operation, unsigned long tag, unsigned long setIndex, int assoc); //readFIFO and writeFIFO combined
+void readFIFO(unsigned long tag, unsigned long setIndex, int assoc);
+void writeFIFO(unsigned long tag, unsigned long setIndex, int assoc);
+void LRU(char operation, unsigned long tag, unsigned long setIndex, int assoc); //readLRU and writeLRU combined
+void readLRU(unsigned long tag, unsigned long setIndex, int assoc);
+void writeLRU(unsigned long tag, unsigned long setIndex, int assoc);
+void cacheData(char operation, char cachePolicy, unsigned long tag, unsigned long setIndex, int assoc); //FIFO and LRU combined
+void fillLine(unsigned long tag, unsigned long setIndex, int lineIndex);
 
 Line** cache;
-int hits;
-int misses;
+int cacheMiss;
+int cacheHit;
 int memRead;
 int memWrite;
+int repCount;
 
 int main(int argc, char** argv) {
 
-    const int addressSize = 48;
+//    const int addressSize = 48;
 
     //Input Expression: ./first <cache size><block size><cache policy><associativity><trace file>
     if(argc != 6){
@@ -32,11 +43,6 @@ int main(int argc, char** argv) {
     if(!checkInputValidity(argc, argv)){
         printf("error");
     }
-
-    memRead = 0;
-    memWrite = 0;
-    hits = 0;
-    misses = 0;
 
 //----------------------Parsing Arguments-------------------------------//
     int cacheSize = atoi(argv[1]);
@@ -55,7 +61,7 @@ int main(int argc, char** argv) {
         assoc = 1;
     } else if(strcmp("assoc", argv[4]) == 0){
         totalSets = 1;
-        assoc = 0;
+        assoc = totalLines;
         setIndexSize = 0;
     } else {
         int linesPerSet = argv[4][6] - '0';
@@ -68,264 +74,31 @@ int main(int argc, char** argv) {
     if(setIndexSize != 0){
         setIndexSize = (int) log2(totalLines / assoc);
     }
-    int tagSize = addressSize - setIndexSize - blockOffsetSize;
-
-    char tag[49];
-    char setIndex[49];
-    char blockOffset[49];
+//    int tagSize = addressSize - setIndexSize - blockOffsetSize;
 
 //----------------------Initialize Cache-------------------------------//
-    struct Line cache[totalSets][assoc];
+    cache = initializeCache(totalSets, assoc);
 
-    for(int i = 0; i < totalSets; i++){
-        for(int j = 0; j < assoc; j++){
-//            cache[i][j].block = NULL;
-            cache[i][j].tag = NULL;
-            cache[i][j].valid = 0;
-        }
-    }
-
-    int orderFIFO[totalSets][assoc]; // Elements represent relative assignment time. Higher Number = Older (FIFO)
-    for(int i = 0; i < totalSets; i++) {
-        for (int j = 0; j < assoc; j++) {
-            orderFIFO[i][j] = 0;
-        }
-    }
-
-//----------------------Start Caching---------------------------------//
-
-    char* hexAddress = (char*)malloc(sizeof(char) * addressSize + 1);
     char operation;
+    unsigned long address;
 
-//    printf("blockSize: %d\n", blockSize);
-//    printf("tagSize: %d\n", tagSize);
-//    printf("setIndexSize: %d\n", setIndexSize);
-//    printf("blockOffsetSize: %d\n", blockOffsetSize);
+//    printf("Total Sets: %d\nAssoc: %d\nBlock Size: %d\nTag Size: %d\nCache Size: %d\nCache Policy: %c\nBlock Index Bits: %d\nSet Bits: %d\n", totalSets, assoc, blockSize, tagSize, cacheSize, cachePolicy, blockOffsetSize, setIndexSize);
 
-    while(fscanf(fp, "%c 0x%s\n", &operation, hexAddress) != EOF && operation != '#') {
+//----------------------Start Caching File-------------------------------//
 
-//----------------------Convert Hex -> Bin---------------------------------//
-        char binAddress[48];
-        int p = 0;
-        int q = 0;
-        while (hexAddress[p]) {
-            switch (hexAddress[p]) {
-                case '0':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '0';
-                    break;
-                case '1':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '1';
-                    break;
-                case '2':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '0';
-                    break;
-                case '3':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '1';
-                    break;
-                case '4':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '0';
-                    break;
-                case '5':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '1';
-                    break;
-                case '6':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '0';
-                    break;
-                case '7':
-                    binAddress[q] = '0';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '1';
-                    break;
-                case '8':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '0';
-                    break;
-                case '9':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '1';
-                    break;
-                case 'A':
-                case 'a':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '0';
-                    break;
-                case 'B':
-                case 'b':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '0';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '1';
-                    break;
-                case 'C':
-                case 'c':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '0';
-                    break;
-                case 'D':
-                case 'd':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '0';
-                    binAddress[q + 3] = '1';
-                    break;
-                case 'E':
-                case 'e':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '0';
-                    break;
-                case 'F':
-                case 'f':
-                    binAddress[q] = '1';
-                    binAddress[q + 1] = '1';
-                    binAddress[q + 2] = '1';
-                    binAddress[q + 3] = '1';
-                    break;
-                default:
-                    break;
-            }
-            p++;
-            q += 4;
-        }
-        int difference = addressSize - strlen(binAddress);
-        char fullBinAddress[49];
-        for (int i = 0; i < difference; i++) {
-            fullBinAddress[i] = '0';
-        }
-        fullBinAddress[difference] = '\0';
-        strcat(fullBinAddress, binAddress);
+    while(fscanf(fp, "%c %lx\n", &operation, &address) != EOF && operation != '#') {
 
-//----------------------******************************************----------------------------//
-//----------------------fullBinAddress contains the 48-bit Address----------------------------//
-//----------------------******************************************----------------------------//
+//        unsigned long blockOffset = getNthToKthBits(address, 1, blockOffsetSize);
+        unsigned long setIndex = getNthToKthBits(address, blockOffsetSize + 1, blockOffsetSize + setIndexSize);
+        unsigned long tag = getNthToKthBits(address, blockOffsetSize + setIndexSize + 1, 64);
 
-//-------------------------Populating Addressing Variables------------------------------------//
-
-        for (int i = 0; i < tagSize; i++) {
-            tag[i] = fullBinAddress[i];
-        }
-        for (int i = 0; i < setIndexSize; i++) {
-            setIndex[i] = fullBinAddress[i + tagSize];
-        }
-        for (int i = 0; i < blockOffsetSize; i++) {
-            blockOffset[i] = fullBinAddress[i + tagSize + setIndexSize];
-        }
-
-        fullBinAddress[difference] = '\0';
-        tag[tagSize] = '\0';
-        setIndex[setIndexSize] = '\0';
-        blockOffset[blockOffsetSize] = '\0';
-
-//-----------------------******************************************----------------------------//
-//-------------------------------Cache Reading and Writing-------------------------------------//
-//-----------------------******************************************----------------------------//
-        fullBinAddress[difference] = '\0';
-        tag[tagSize] = '\0';
-        setIndex[setIndexSize] = '\0';
-        blockOffset[blockOffsetSize] = '\0';
-
-        int setNum = binToInt(setIndex);
-        int foundLine = 0;
-
-//---------------Search Cache Set For A Line That Matches Tag And Is Valid---------------------//
-        for (int i = 0; i < assoc; i++) {
-            if (cache[setNum][i].valid == 1 && cache[setNum][i].tag == tag) {
-                foundLine = 1;
-//---------------Read Hit---------------------//
-                if (operation == 'R') {
-                    hits++;
-                    break;
-//---------------Write Hit---------------------//
-                } else {
-                    hits++;
-                    writes++;
-                    break;
-                }
-            }
-        }
-
-//---------------Search for Invalid Line to Fill---------------------//
-
-        if(foundLine == 0) {
-            int i;
-            for (i = 0; i < assoc; i++) {
-                if (cache[setNum][i].valid == 0) {
-                    foundLine = 1;
-//---------------Read Miss---------------------//
-                    if (operation == 'R') {
-                        misses++;
-                        reads++;
-                        break;
-//---------------Write Miss---------------------//
-                    } else {
-                        misses++;
-                        writes++;
-                        reads++;
-                        break;
-                    }
-                }
-            }
-            cache[setNum][i].valid = 1;
-            cache[setNum][i].tag = tag;
-        }
-
-//------------------***************************************************------------------------//
-//------------------Set is Full of Valid Lines. Need to Use FIFO or LRU------------------------//
-//------------------***************************************************------------------------//
-
-        if(foundLine == 0) {
-
-//--------------------First In First Out (FIFO)-------------------//
-            if (cachePolicy == 'f') {
-
-                cache[setNum][orderFIFO[setNum][0]].valid = 1;
-                cache[setNum][orderFIFO[setNum][0]].tag = tag;
-
-//--------------------Last Recently Used (LRU)-------------------//
-            } else {
-
-            }
-        }
-
-//        printf("%c    %s --> %s\n", operation, hexAddress, fullBinAddress);
-//        printf("Tag: %s    Set Index: %s    BLock Offset: %s    Set Num:%d\n", tag, setIndex, blockOffset, setNum);
+        cacheData(operation, cachePolicy, tag, setIndex, assoc);
     }
 
-    printf("Memory reads: %d\nMemory writes: %d\nCache hits: %d\nCache misses: %d\n", reads, writes, hits, misses);
+    printf("Memory reads: %d\nMemory writes: %d\nCache hits: %d\nCache misses: %d\n", memRead, memWrite, cacheHit, cacheMiss);
 
-    free(hexAddress);
-//    free(binAddress);
+    freeCache(cache, totalSets);
+    fclose(fp);
 }
 
 //----------------------Helper Methods--------------------------------//
@@ -334,22 +107,320 @@ int checkInputValidity(int argc, char** argv){
     return 1;
 }
 
-int binToInt(char* s){
-    return (int) strtol(s, NULL, 2);
-}
-
 Line** initializeCache(int numSet, int assoc){
 
     cache = (Line**)malloc(sizeof(Line*) * numSet);
 
     for(int i = 0; i < numSet; i++){
-        cache[numSet] = (Line*)malloc(sizeof(Line) * assoc);
+        cache[i] = (Line*)malloc(sizeof(Line) * assoc);
     }
 
     for (int i = 0; i < numSet; i++){
-        for(int j = 0; j < numSet; j++){
+        for(int j = 0; j < assoc; j++){
             cache[i][j].valid = 0;
         }
     }
+    return cache;
+}
 
+void freeCache(Line** cache, int numSet){
+
+    for(int i = 0; i < numSet; i++){
+        free(cache[i]);
+    }
+    free(cache);
+}
+
+//----------------------******************************************----------------------------//
+//-------------------------------For Testing Purposes Only-------------------------------------//
+//----------------------******************************************----------------------------//
+void printBits(size_t const size, void const * const ptr){
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+
+    for (i = size - 1; i >= 0; i--){
+        for (j = 7; j >= 0 ;j--) {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
+}
+
+unsigned long getNthToKthBits(unsigned long x, int n, int k){
+
+    x <<= (64 - k);
+    x >>= (63 - k + n);
+
+    return x;
+}
+
+void readFIFO(unsigned long tag, unsigned long setIndex, int assoc) {
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            fillLine(tag, setIndex, i);
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag) {
+            cacheHit++;
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+void writeFIFO(unsigned long tag, unsigned long setIndex, int assoc) {
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            memWrite++;
+            fillLine(tag, setIndex, i);
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag){
+            cacheHit++;
+            memWrite++;
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+    memWrite++;
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+//----------------------******************************************----------------------------//
+//----------------------------ReadFIFO and WriteFIFO Combined---------------------------------//
+//----------------------******************************************----------------------------//
+
+void FIFO(char operation, unsigned long tag, unsigned long setIndex, int assoc){
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            fillLine(tag, setIndex, i);
+            if(operation == 'W'){
+                memWrite++;
+            }
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag) {
+            cacheHit++;
+            if(operation == 'W'){
+                memWrite++;
+            }
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+
+    if(operation == 'W'){
+        memWrite++;
+    }
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+void readLRU(unsigned long tag, unsigned long setIndex, int assoc){
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            fillLine(tag, setIndex, i);
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag) {
+            cacheHit++;
+            fillLine(tag, setIndex, i);
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+void writeLRU(unsigned long tag, unsigned long setIndex, int assoc){
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            memWrite++;
+            fillLine(tag, setIndex, i);
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag){
+            cacheHit++;
+            memWrite++;
+            fillLine(tag, setIndex, i);
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+    memWrite++;
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+//----------------------******************************************----------------------------//
+//-----------------------------ReadLRU and WriteLRU Combined----------------------------------//
+//----------------------******************************************----------------------------//
+
+void LRU(char operation, unsigned long tag, unsigned long setIndex, int assoc){
+
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            fillLine(tag, setIndex, i);
+            if(operation == 'W'){
+                memWrite++;
+            }
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag) {
+            cacheHit++;
+            if(operation == 'W'){
+                memWrite++;
+            }
+            fillLine(tag, setIndex, i);
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+    if(operation == 'W'){
+        memWrite++;
+    }
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+//----------------------******************************************----------------------------//
+//---------------------------------FIFO and LRU Combined--------------------------------------//
+//----------------------******************************************----------------------------//
+
+void cacheData(char operation, char cachePolicy, unsigned long tag, unsigned long setIndex, int assoc){
+    for (int i = 0; i < assoc; i++) {
+//-------------------------------Fill All Invalid Lines-------------------------------------//
+        if (cache[setIndex][i].valid == 0) {
+            cacheMiss++;
+            memRead++;
+            fillLine(tag, setIndex, i);
+            if(operation == 'W'){
+                memWrite++;
+            }
+            return;
+
+//-------------------------------Check For Tag Match-------------------------------------//
+        } else if(cache[setIndex][i].tag == tag) {
+            cacheHit++;
+            if(operation == 'W'){
+                memWrite++;
+            }
+            if(cachePolicy == 'l'){
+                fillLine(tag, setIndex, i);
+            }
+            return;
+        }
+    }
+//----------------------All Lines Are Valid And No Tag Matches----------------------------//
+    cacheMiss++;
+    memRead++;
+
+    if(operation == 'W'){
+        memWrite++;
+    }
+
+//----------------Find Minimum Replacement Indexed Line and Replace----------------------//
+    int minRep = 0;
+    for(int i = 0; i < assoc; i++){
+        if(cache[setIndex][i].repIndex < cache[setIndex][minRep].repIndex){
+            minRep = i;
+        }
+    }
+    fillLine(tag, setIndex, minRep);
+}
+
+void fillLine(unsigned long tag, unsigned long setIndex, int lineIndex){
+    repCount++;
+    cache[setIndex][lineIndex].tag = tag;
+    cache[setIndex][lineIndex].valid = 1;
+    cache[setIndex][lineIndex].repIndex = repCount;
 }
