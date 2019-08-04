@@ -150,6 +150,10 @@ void printBits(size_t const size, void const * const ptr){
 
 unsigned long getNthToKthBits(unsigned long x, int n, int k){
 
+    if(n > k){
+        return 0;
+    }
+
     x <<= (64 - k);
     x >>= (63 - k + n);
 
