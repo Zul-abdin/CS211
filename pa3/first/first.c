@@ -9,6 +9,8 @@ typedef struct Line {
     int repIndex; //FIFO: Lower = Older
 } Line;
 
+int isDigit(char c);
+int isPowerOf2(int n);
 int checkInputValidity(int argc, char** argv);
 Line** initializeCache(int numSet, int assoc);
 void freeCache(Line** cache, int numSet);
@@ -35,13 +37,10 @@ int main(int argc, char** argv) {
 //    const int addressSize = 48;
 
     //Input Expression: ./first <cache size><block size><cache policy><associativity><trace file>
-    if(argc != 6){
-        printf("error\n");
-        return -1;
-    }
 
     if(!checkInputValidity(argc, argv)){
         printf("error");
+        return 0;
     }
 
 //----------------------Parsing Arguments-------------------------------//
@@ -64,9 +63,10 @@ int main(int argc, char** argv) {
         assoc = totalLines;
         setIndexSize = 0;
     } else {
-        int linesPerSet = argv[4][6] - '0';
+        int linesPerSet;
+        sscanf(argv[4], "assoc:%d", &linesPerSet);
         totalSets = totalLines / linesPerSet;
-        assoc = argv[4][6] - '0';
+        assoc = linesPerSet;
     }
 
 //--------------------Initialize Addressing----------------------------//
@@ -103,8 +103,59 @@ int main(int argc, char** argv) {
 
 //----------------------Helper Methods--------------------------------//
 
+int isDigit(char c){
+    if ((c>='0') && (c<='9')) return 1;
+    return 0;
+}
+
+int isPowerOf2(int n){
+
+    if(n <= 0){
+        return 0;
+    } else {
+        return (ceil(log2(n)) == floor(log2(n)));
+    }
+
+}
+
 int checkInputValidity(int argc, char** argv){
-    return 1;
+    if(argc != 6){
+        printf("error\n");
+        return 0;
+    }
+    if(!isPowerOf2(atoi(argv[1]))){
+        printf("error\n");
+        return 0;
+    }
+    if(!isPowerOf2(atoi(argv[2]))){
+        printf("error\n");
+        return 0;
+    }
+    if((strcmp(argv[3], "fifo") != 0) && (strcmp(argv[3], "lru") != 0)){
+        printf("error\n");
+        return 0;
+    }
+    if((strcmp(argv[4], "direct") != 0) && (strcmp(argv[4], "assoc") != 0)){
+        if(argv[4][0] == 'a' && argv[4][1] == 's' && argv[4][2] == 's' && argv[4][3] == 'o' && argv[4][4] == 'c' && argv[4][5] == ':' && strlen(argv[4]) > 6){
+            for(int i = 6; i < strlen(argv[4]); i++){
+                if(!isDigit(argv[4][i])){
+                    printf("error\n");
+                    return 0;
+                }
+            }
+        } else {
+            printf("error\n");
+            return 0;
+        }
+    }
+    FILE *file;
+    if ((file = fopen(argv[5], "r"))){
+        fclose(file);
+        return 1;
+    } else {
+        printf("error\n");
+        return 0;
+    }
 }
 
 Line** initializeCache(int numSet, int assoc){
