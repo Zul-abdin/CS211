@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     //Input Expression: ./first <cache size><block size><cache policy><associativity><trace file>
 
     if(!checkInputValidity(argc, argv)){
-        printf("error");
+        printf("error\n");
         return 0;
     }
 
@@ -120,31 +120,25 @@ int isPowerOf2(int n){
 
 int checkInputValidity(int argc, char** argv){
     if(argc != 6){
-        printf("error\n");
         return 0;
     }
     if(!isPowerOf2(atoi(argv[1]))){
-        printf("error\n");
         return 0;
     }
     if(!isPowerOf2(atoi(argv[2]))){
-        printf("error\n");
         return 0;
     }
     if((strcmp(argv[3], "fifo") != 0) && (strcmp(argv[3], "lru") != 0)){
-        printf("error\n");
         return 0;
     }
     if((strcmp(argv[4], "direct") != 0) && (strcmp(argv[4], "assoc") != 0)){
         if(argv[4][0] == 'a' && argv[4][1] == 's' && argv[4][2] == 's' && argv[4][3] == 'o' && argv[4][4] == 'c' && argv[4][5] == ':' && strlen(argv[4]) > 6){
             for(int i = 6; i < strlen(argv[4]); i++){
                 if(!isDigit(argv[4][i])){
-                    printf("error\n");
                     return 0;
                 }
             }
         } else {
-            printf("error\n");
             return 0;
         }
     }
@@ -153,7 +147,6 @@ int checkInputValidity(int argc, char** argv){
         fclose(file);
         return 1;
     } else {
-        printf("error\n");
         return 0;
     }
 }
